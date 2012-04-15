@@ -8,6 +8,7 @@ push(@INC,"./");
 use strict;
 #use api_key; # get api
 use Nagios::Plugin::Getopt;
+use Getopt::Long;
 use Nagios::Plugin::Threshold;
 use Nagios::Plugin;
 use HTTP::Headers;
