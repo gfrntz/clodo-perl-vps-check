@@ -8,11 +8,11 @@ push(@INC,"./");
 use strict;
 #use api_key; # get api
 use Nagios::Plugin::Getopt;
-use Getopt::Long;
 use Nagios::Plugin::Threshold;
 use Nagios::Plugin;
 use HTTP::Headers;
 use HTTP::Request;
+use JSON;
 
 
 use vars qw(
@@ -23,11 +23,20 @@ use vars qw(
 	$version
 );
 
+$version = "v1.0";
+
+$usage = <<'EOT';
+clodo_monit --api=api.clodo.ru --id=11111
+			[--testapi] [--mcci=value] [--mcc=value]
+			[--mm=value] [--mio=value] [--mhu=value]
+			[--checkbalance] [--version]
+EOT
+
+
 $np = Nagios::Plugin->new( shortname => 'CLODO_MONIT' );
 
 	$options = Nagios::Plugin::Getopt->new(
 		usage	=> $usage,
-		extra	=> $extra,
 		version	=> $version,
 		url		=> 'https://github.com/Cepnoy/clodo-perl-vps-check',
 		blurb	=> 'Check clodo corp client\'s vps',
@@ -86,3 +95,5 @@ $np = Nagios::Plugin->new( shortname => 'CLODO_MONIT' );
 		help	=> 'check negative balance',
 		required => 0,
 	);
+
+	$options->getopts();
