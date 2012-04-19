@@ -11,6 +11,7 @@ use Nagios::Plugin::Threshold;
 use Nagios::Plugin;
 use HTTP::Request;
 use LWP::UserAgent;
+use JSON::Any;
 
 my $login = 'chainwolf@gmail.com';
 my $key = '1625aa135130ceffae4facb4fbfb4c7a';
@@ -22,12 +23,10 @@ use vars qw(
 	$usage
 	$extra
 	$version
-	$response
-	$request
-	$ua
 	$apiurl
 	$verbose
 	$xtoken
+	$cmdurl
 );
 
 $version = "v0.1";
@@ -101,25 +100,55 @@ $np = Nagios::Plugin->new( shortname => 'CLODO_MONIT' );
 
 
 sub auth_api {
-	$ua = LWP::UserAgent->new;
-	$request = HTTP::Request->new('GET', $apiurl,
+	my $ua = LWP::UserAgent->new;
+	my $request = HTTP::Request->new('GET', $apiurl,
 							[   'X-Auth-User' => $login,
 								'X-Auth-Key'  => $key,
 							]
 	);
 
-	$response = $ua->request($request);
+	my $response = $ua->request($request);
 
 	if ($response->is_success(204)) {
 		if ($options->verbose) {
 			print $response->as_string;
 		}
 		$xtoken = $response->header('X-Auth-Token');
+		$cmdurl = $response->header('X-Server-Management-Url');
 		print "$xtoken\n";
+		print "$cmdurl\n";
 	} else {
 		die $response->status_line;
 	}
 
 }
+
+sub get_limits {
+	my $ua = LWP::UserAgent->new;
+	my $request = HTTP::Request->new('GET', $cmdurl . "/limits",
+									[	'X-Auth-Token' => $xtoken,
+										'Accept' => "application/json"
+									 ]
+								);
+	my $response = $ua->request($request);
+
+	if ($response->is_success(200)) {
+		if ($options->verbose) {
+			print $response->as_string;
+		}
+		print "Ok.\n";
+	} else {
+		print "Not ok.\n";
+	}
 	
+	my $res = $response->content;
+	
+	print "$res\n";
+	
+	my $json_xs = JSON::Any->new;
+    my  $json_xs->decode($res);
+	#print "@json\n";
+	
+}
 auth_api();
+get_limits();
