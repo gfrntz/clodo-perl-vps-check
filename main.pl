@@ -101,7 +101,6 @@ $np = Nagios::Plugin->new( shortname => 'CLODO_MONIT' );
 
 
 sub auth_api {
-	print "$apiurl\n";
 	$ua = LWP::UserAgent->new;
 	$request = HTTP::Request->new('GET', $apiurl,
 							[   'X-Auth-User' => $login,
