@@ -6,14 +6,15 @@
 push(@INC,"./");
 
 use strict;
-#use api_key; # get api
 use Nagios::Plugin::Getopt;
 use Nagios::Plugin::Threshold;
 use Nagios::Plugin;
-use HTTP::Headers;
 use HTTP::Request;
-use JSON;
+use LWP::UserAgent;
 
+my $login = 'chainwolf@gmail.com';
+my $key = '1625aa135130ceffae4facb4fbfb4c7a';
+my $apiurl = 'http://testapi.kh.clodo.ru';
 
 use vars qw(
 	$np
@@ -21,12 +22,18 @@ use vars qw(
 	$usage
 	$extra
 	$version
+	$response
+	$request
+	$ua
+	$apiurl
+	$verbose
+	$xtoken
 );
 
-$version = "v1.0";
+$version = "v0.1";
 
 $usage = <<'EOT';
-clodo_monit --api=api.clodo.ru --id=11111
+clodo_monit --id=11111
 			[--testapi] [--mcci=value] [--mcc=value]
 			[--mm=value] [--mio=value] [--mhu=value]
 			[--checkbalance] [--version]
@@ -41,13 +48,7 @@ $np = Nagios::Plugin->new( shortname => 'CLODO_MONIT' );
 		url		=> 'https://github.com/Cepnoy/clodo-perl-vps-check',
 		blurb	=> 'Check clodo corp client\'s vps',
 	);	
-	
-	$options->arg(
-		spec	=> 'api=s',
-		help	=> 'set api addres',
-		required => 1,
-	);
-	
+		
 	$options->arg(
 		spec	=> 'testapi',
 		help	=> 'test api connect',
@@ -95,5 +96,31 @@ $np = Nagios::Plugin->new( shortname => 'CLODO_MONIT' );
 		help	=> 'check negative balance',
 		required => 0,
 	);
-
+	
 	$options->getopts();
+
+
+sub auth_api {
+	print "$apiurl\n";
+	$ua = LWP::UserAgent->new;
+	$request = HTTP::Request->new('GET', $apiurl,
+							[   'X-Auth-User' => $login,
+								'X-Auth-Key'  => $key,
+							]
+	);
+
+	$response = $ua->request($request);
+
+	if ($response->is_success(204)) {
+		if ($options->verbose) {
+			print $response->as_string;
+		}
+		$xtoken = $response->header('X-Auth-Token');
+		print "$xtoken\n";
+	} else {
+		die $response->status_line;
+	}
+
+}
+	
+auth_api();
