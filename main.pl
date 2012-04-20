@@ -13,9 +13,9 @@ use HTTP::Request;
 use LWP::UserAgent;
 use JSON::Any;
 
-my $login = 'chainwolf@gmail.com';
-my $key = '1625aa135130ceffae4facb4fbfb4c7a';
-my $apiurl = 'http://testapi.kh.clodo.ru';
+my $login = 'login@login';
+my $key = 'key';
+my $apiurl = 'https://testapi.kh.clodo.ru';
 
 use vars qw(
 	$np
@@ -125,7 +125,7 @@ sub auth_api {
 
 sub get_limits {
 	my $ua = LWP::UserAgent->new;
-	my $request = HTTP::Request->new('GET', $cmdurl . "/limits",
+	my $request = HTTP::Request->new('GET', $cmdurl . "/servers",
 									[	'X-Auth-Token' => $xtoken,
 										'Accept' => "application/json"
 									 ]
@@ -139,15 +139,16 @@ sub get_limits {
 		print "Ok.\n";
 	} else {
 		print "Not ok.\n";
+		die $response->status_line;
 	}
 	
 	my $res = $response->content;
 	
 	print "$res\n";
-	
+	my $json_res;
 	my $json_xs = JSON::Any->new;
-    my  $json_xs->decode($res);
-	#print "@json\n";
+    my %json_res = $json_xs->from_json($res);
+	print "$json_res->{id}\n";
 	
 }
 auth_api();
