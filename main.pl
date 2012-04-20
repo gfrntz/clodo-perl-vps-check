@@ -147,8 +147,8 @@ sub get_limits {
 	print "$res\n";
 	my $json_res;
 	my $json_xs = JSON::Any->new;
-    my %json_res = $json_xs->from_json($res);
-	print "$json_res->{id}\n";
+    my $son_res = $json_xs->from_json($res);
+
 	
 }
 auth_api();
