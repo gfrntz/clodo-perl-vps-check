@@ -123,7 +123,7 @@ sub auth_api {
 
 }
 
-sub get_limits {
+sub get_servers {
 	my $ua = LWP::UserAgent->new;
 	my $request = HTTP::Request->new('GET', $cmdurl . "/servers",
 									[	'X-Auth-Token' => $xtoken,
