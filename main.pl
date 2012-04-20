@@ -152,4 +152,4 @@ sub get_servers {
 	
 }
 auth_api();
-get_limits();
+get_servers();
