@@ -214,22 +214,76 @@ sub check_cpu_load {
 	my $response = $ua->request($request);
 
 	if ($response->is_success(200)) {
-		if ($options->verbose) {
-			print $response->as_string;
-		}
+		
 		my $res = $response->content;
 		my $json_any = JSON::Any->new;
 		my $json_res = $json_any->from_json($res);
-		my $stat = $json_res->{server}->{vps_cpu_load};
-		print "Cpu load - $stat" . "%" . "\n";
+		my $cpu_stat = $json_res->{server}->{vps_cpu_load};
+		
+		if ($options->verbose) {
+			print $response->as_string;
+			print "Cpu load - $cpu_stat" . "%" . "\n";
+		}
+	} else {
+		$np->nagios_exit(CRITICAL, "Could not connect to api url /servers/$small_id for cpu check");
 	}
 	
 }
+
+sub check_mem_load {
+	my $ua = LWP::UserAgent->new;
+	my $request = HTTP::Request->new('GET', $cmdurl . "/servers/$small_id",
+									[	'X-Auth-Token' => $xtoken,
+										'Accept' => "application/json"
+									 ]
+								);
+	my $response = $ua->request($request);
+
+	if ($response->is_success(200)) {
+		
+		my $res = $response->content;
+		my $json_any = JSON::Any->new;
+		my $json_res = $json_any->from_json($res);
+		my $mem_stat = $json_res->{server}->{vps_mem_load};
+	
+		if ($options->verbose) {
+			print $response->as_string;
+			print "Cpu load - $mem_stat" . "%" . "\n";
+		}
+	} else {
+		$np->nagios_exit(CRITICAL, "Could not connect to api url /servers/$small_id for mem_check");
+	}
+	
+}
+
+sub check_disk_load {
+	my $ua = LWP::UserAgent->new;
+	my $request = HTTP::Request->new('GET', $cmdurl . "/servers/$small_id",
+									[	'X-Auth-Token' => $xtoken,
+										'Accept' => "application/json"
+									 ]
+								);
+	my $response = $ua->request($request);
+
+	if ($response->is_success(200)) {
+		
+		my $res = $response->content;
+		my $json_any = JSON::Any->new;
+		my $json_res = $json_any->from_json($res);
+		my $hdd_stat = $json_res->{server}->{vps_disk_load};
+		if ($options->verbose) {
+			print $response->as_string;
+			print "Disk usage - $hdd_stat" . "%" . "\n";
+		}
+	} else {
+		$np->nagios_exit(CRITICAL, "Could not connect to api url /servers/$small_id for disk_check");
+	}
+	
+}
+
 auth_api();
 get_servers();
 check_state();
-check_cpu_load()
-
-
-
-
+check_cpu_load();
+check_mem_load();
+check_disk_load();
