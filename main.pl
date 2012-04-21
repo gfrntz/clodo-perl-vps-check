@@ -170,6 +170,8 @@ sub get_servers {
 			} 
 		}
 
+		die ("Server id not found!\n") if (!defined $id_loop);
+
 	} else {
 		print "Not ok.\n";
 		die $response->status_line;
@@ -281,6 +283,29 @@ sub check_disk_load {
 	
 }
 
+sub testapi {
+	my $ua = LWP::UserAgent->new;
+	my $request = HTTP::Request->new('GET', $apiurl,
+							[   'X-Auth-User' => $login,
+								'X-Auth-Key'  => $key,
+							]
+	);
+
+	my $response = $ua->request($request);
+
+	if ($response->is_success(204)) {
+		print "Test api success! Exit for nothing.\n";
+		
+	} else {
+		die $response->status_line;
+	}
+
+}
+
+if ($options->testapi) {
+	testapi();
+	exit 0;
+}
 auth_api();
 get_servers();
 check_state();
