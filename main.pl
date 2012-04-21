@@ -16,8 +16,6 @@ use JSON::Any;
 my $login = 'chainwolf@gmail.com';
 my $key = '1625aa135130ceffae4facb4fbfb4c7a';
 my $apiurl = 'https://testapi.kh.clodo.ru';
-my $srv_mon_id = "131831-10004";
-
 
 use vars qw(
 	$np
@@ -100,7 +98,7 @@ $np = Nagios::Plugin->new( shortname => 'CLODO_MONIT' );
 	);
 	
 	$options->getopts();
-
+my $id = $options->id;
 
 sub auth_api {
 	my $ua = LWP::UserAgent->new;
@@ -113,13 +111,15 @@ sub auth_api {
 	my $response = $ua->request($request);
 
 	if ($response->is_success(204)) {
-		if ($options->verbose) {
-			print $response->as_string;
-		}
+
 		$xtoken = $response->header('X-Auth-Token');
 		$cmdurl = $response->header('X-Server-Management-Url');
-		print "$xtoken\n";
-		print "$cmdurl\n";
+		
+		if ($options->verbose) {			
+			print $response->as_string;
+			print "X-token = $xtoken\n";
+			print "Cmd url = $cmdurl\n";
+		}
 	} else {
 		die $response->status_line;
 	}
@@ -137,37 +137,43 @@ sub get_servers {
 	my $response = $ua->request($request);
 
 	if ($response->is_success(200)) {
+		my $res = $response->content;
+			
 		if ($options->verbose) {
-			print $response->as_string;
+			print "/servers response content\n";
+			print "$res\n";
 		}
-		print "Ok.\n";
+
+		my ($json_res,@srv_ids);
+		my $json_any = JSON::Any->new;
+		$json_res = $json_any->from_json($res);
+
+
+		for my $ids( @{$json_res->{servers}} ){
+			push @srv_ids, $ids->{full_id};
+		}
+	
+		$j = @srv_ids;
+	
+		if ($options->verbose) {
+			print "Number of servers in acc - $j\n";
+		}
+	
+		for ($i=0;$i<$j;$i++) {
+			if($srv_ids[$i] eq $id) {
+				if ($options->verbose) {
+					print "This is $srv_ids[$i]\n";
+				}
+				$id_loop = $i;
+				last;
+			} 
+		}
+
 	} else {
 		print "Not ok.\n";
 		die $response->status_line;
 	}
 	
-	my $res = $response->content;
-	
-	print "$res\n";
-	my ($json_res, %srv_ids, @srv_ids);
-	my $json_xs = JSON::Any->new;
-    $json_res = $json_xs->from_json($res);
-
-
-	for my $ids( @{$json_res->{servers}} ){
-		push @srv_ids, $ids->{full_id};
-	}
-	
-	$j = @srv_ids;
-	print "$j\n";
-	
-	for ($i=0;$i<$j;$i++) {
-		if($srv_ids[$i] eq $srv_mon_id) {
-			print "This is $srv_ids[$i]\n";
-			$id_loop = $i;
-			last;
-		} 
-	}
 }
 
 sub check_state {
@@ -183,25 +189,22 @@ sub check_state {
 		if ($options->verbose) {
 			print $response->as_string;
 		}
-		print "Ok.\n";
+		my $res = $response->content;
+		my $json_any = JSON::Any->new;
+		my $json_res = $json_any->from_json($res);
+		my $stat = $json_res->{servers}->[$id_loop]->{status};
+		print "$id - $stat\n";
 	} else {
 		$np->nagios_exit(CRITICAL, "Could not connect to api url /servers.");
 	}
 	
-	my $res = $response->content;
-	my $json_any = JSON::Any->new;
-    my $json_res = $json_any->from_json($res);
 
-	my $stat = my $id = $json_res->{servers}->[$id_loop]->{status};
-	print "$srv_mon_id - $stat\n";
+	
 	
 }
-
 auth_api();
 get_servers();
 check_state();
-
-print "This is id loop - $id_loop\n";
 
 
 
