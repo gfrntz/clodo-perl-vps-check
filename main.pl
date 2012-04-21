@@ -28,6 +28,7 @@ use vars qw(
 	$xtoken
 	$cmdurl
 	$id_loop
+	$small_id
 );
 
 $version = "v0.1";
@@ -63,13 +64,13 @@ $np = Nagios::Plugin->new( shortname => 'CLODO_MONIT' );
 	
 	$options->arg(
 		spec	=> 'mcc=i',
-		help	=> 'set max cpu critical value',
+		help	=> 'set max cpu critical value in percent',
 		required => 0,
 	);
 	
 	$options->arg(
 		spec	=> 'mm=i',
-		help	=> 'set max memory critical value in KB',
+		help	=> 'set max memory critical value in percent',
 		required => 0,
 	);
 	
@@ -87,7 +88,7 @@ $np = Nagios::Plugin->new( shortname => 'CLODO_MONIT' );
 
 	$options->arg(
 		spec	=> 'mhu=i',
-		help	=> 'set max hdd usage',
+		help	=> 'set max hdd usage in percent',
 		required => 0,
 	);
 	
@@ -152,7 +153,7 @@ sub get_servers {
 		for my $ids( @{$json_res->{servers}} ){
 			push @srv_ids, $ids->{full_id};
 		}
-	
+		
 		$j = @srv_ids;
 	
 		if ($options->verbose) {
@@ -193,18 +194,41 @@ sub check_state {
 		my $json_any = JSON::Any->new;
 		my $json_res = $json_any->from_json($res);
 		my $stat = $json_res->{servers}->[$id_loop]->{status};
+		$small_id = $json_res->{servers}->[$id_loop]->{id};
 		print "$id - $stat\n";
 	} else {
 		$np->nagios_exit(CRITICAL, "Could not connect to api url /servers.");
 	}
 	
-
+	return my $stat;
 	
+}
+
+sub check_cpu_load {
+	my $ua = LWP::UserAgent->new;
+	my $request = HTTP::Request->new('GET', $cmdurl . "/servers/$small_id",
+									[	'X-Auth-Token' => $xtoken,
+										'Accept' => "application/json"
+									 ]
+								);
+	my $response = $ua->request($request);
+
+	if ($response->is_success(200)) {
+		if ($options->verbose) {
+			print $response->as_string;
+		}
+		my $res = $response->content;
+		my $json_any = JSON::Any->new;
+		my $json_res = $json_any->from_json($res);
+		my $stat = $json_res->{server}->{vps_cpu_load};
+		print "Cpu load - $stat" . "%" . "\n";
+	}
 	
 }
 auth_api();
 get_servers();
 check_state();
+check_cpu_load()
 
 
 
