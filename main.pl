@@ -13,9 +13,11 @@ use HTTP::Request;
 use LWP::UserAgent;
 use JSON::Any;
 
-my $login = 'login@login';
-my $key = 'key';
+my $login = 'chainwolf@gmail.com';
+my $key = '1625aa135130ceffae4facb4fbfb4c7a';
 my $apiurl = 'https://testapi.kh.clodo.ru';
+my $srv_mon_id = "131831-10004";
+
 
 use vars qw(
 	$np
@@ -27,6 +29,7 @@ use vars qw(
 	$verbose
 	$xtoken
 	$cmdurl
+	$id_loop
 );
 
 $version = "v0.1";
@@ -124,6 +127,7 @@ sub auth_api {
 }
 
 sub get_servers {
+	my ($i,$j);
 	my $ua = LWP::UserAgent->new;
 	my $request = HTTP::Request->new('GET', $cmdurl . "/servers",
 									[	'X-Auth-Token' => $xtoken,
@@ -145,11 +149,60 @@ sub get_servers {
 	my $res = $response->content;
 	
 	print "$res\n";
-	my $json_res;
+	my ($json_res, %srv_ids, @srv_ids);
 	my $json_xs = JSON::Any->new;
-    my $son_res = $json_xs->from_json($res);
+    $json_res = $json_xs->from_json($res);
 
+
+	for my $ids( @{$json_res->{servers}} ){
+		push @srv_ids, $ids->{full_id};
+	}
+	
+	$j = @srv_ids;
+	print "$j\n";
+	
+	for ($i=0;$i<$j;$i++) {
+		if($srv_ids[$i] eq $srv_mon_id) {
+			print "This is $srv_ids[$i]\n";
+			$id_loop = $i;
+			last;
+		} 
+	}
+}
+
+sub check_state {
+	my $ua = LWP::UserAgent->new;
+	my $request = HTTP::Request->new('GET', $cmdurl . "/servers",
+									[	'X-Auth-Token' => $xtoken,
+										'Accept' => "application/json"
+									 ]
+								);
+	my $response = $ua->request($request);
+
+	if ($response->is_success(200)) {
+		if ($options->verbose) {
+			print $response->as_string;
+		}
+		print "Ok.\n";
+	} else {
+		$np->nagios_exit(CRITICAL, "Could not connect to api url /servers.");
+	}
+	
+	my $res = $response->content;
+	my $json_any = JSON::Any->new;
+    my $json_res = $json_any->from_json($res);
+
+	my $stat = my $id = $json_res->{servers}->[$id_loop]->{status};
+	print "$srv_mon_id - $stat\n";
 	
 }
+
 auth_api();
 get_servers();
+check_state();
+
+print "This is id loop - $id_loop\n";
+
+
+
+
