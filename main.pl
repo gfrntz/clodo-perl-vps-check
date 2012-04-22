@@ -29,6 +29,7 @@ use vars qw(
 	$cmdurl
 	$id_loop
 	$small_id
+	$vps_type
 );
 
 $version = "v0.1";
@@ -63,7 +64,7 @@ $np = Nagios::Plugin->new( shortname => 'CLODO_MONIT' );
 	);
 	
 	$options->arg(
-		spec	=> 'mcc=i',
+		spec	=> 'mcu=i',
 		help	=> 'set max cpu critical value in percent',
 		required => 0,
 	);
@@ -74,17 +75,17 @@ $np = Nagios::Plugin->new( shortname => 'CLODO_MONIT' );
 		required => 0,
 	);
 	
-	$options->arg(
-		spec	=> 'mii=i',
-		help	=> 'set max interface input traffic',
-		required => 0,
-	);
+#	$options->arg(
+#		spec	=> 'mii=i',
+#		help	=> 'set max interface input traffic',
+#		required => 0,
+#	);
 	
-	$options->arg(
-		spec	=> 'mio=i',
-		help	=> 'set max output interface traffic',
-		required => 0,
-	);
+#	$options->arg(
+#		spec	=> 'mio=i',
+#		help	=> 'set max output interface traffic',
+#		required => 0,
+#	);
 
 	$options->arg(
 		spec	=> 'mhu=i',
@@ -197,7 +198,13 @@ sub check_state {
 		my $json_res = $json_any->from_json($res);
 		my $stat = $json_res->{servers}->[$id_loop]->{status};
 		$small_id = $json_res->{servers}->[$id_loop]->{id};
+		$vps_type = $json_res->{servers}->[$id_loop]->{type};
 		print "$id - $stat\n";
+		
+		if ($stat eq "is_disabled") {
+			exit 0;
+		}
+		
 	} else {
 		$np->nagios_exit(CRITICAL, "Could not connect to api url /servers.");
 	}
@@ -226,6 +233,25 @@ sub check_cpu_load {
 			print $response->as_string;
 			print "Cpu load - $cpu_stat" . "%" . "\n";
 		}
+		
+		$cpu_stat = int($cpu_stat);
+		
+		if ($options->mcu) {
+				my $mcu = $options->mcu;
+				
+				if ($cpu_stat >= 10) {
+					$np->nagios_exit(WARNING, "CPU load warning - $cpu_stat\n");
+				} elsif ($cpu_stat >= $mcu) {
+					$np->nagios_exit(CRITICAL, "CPU load critical - $cpu_stat\n");
+				}
+		} else {
+		
+			if ($cpu_stat >= 10) {
+				$np->nagios_exit(WARNING, "CPU load warning- $cpu_stat\n");
+			} elsif ($cpu_stat >= 20) {
+				$np->nagios_exit(CRITICAL, "CPU load critical - $cpu_stat\n");
+			}
+		}
 	} else {
 		$np->nagios_exit(CRITICAL, "Could not connect to api url /servers/$small_id for cpu check");
 	}
@@ -250,7 +276,25 @@ sub check_mem_load {
 	
 		if ($options->verbose) {
 			print $response->as_string;
-			print "Cpu load - $mem_stat" . "%" . "\n";
+			print "Mem stat - $mem_stat" . "%" . "\n";
+		}
+		
+		$mem_stat = int($mem_stat);
+		
+		if ($options->mm) {
+			my $mm = $options->mm;
+			
+			if ($mem_stat >= 60) {
+				$np->nagios_exit(WARNING, "Memory load warning - $mem_stat %\n");
+			} elsif ($mem_stat >= $mm) {
+				$np->nagios_exit(CRITICAL, "Memory load critical - $mem_stat %\n");
+			}
+		} else {
+			if ($mem_stat >= 60) {
+				$np->nagios_exit(WARNING, "Memory load warning - $mem_stat %\n");
+			} elsif ($mem_stat >= 98) {
+				$np->nagios_exit(CRITICAL, "Memory load critical - $mem_stat %\n");
+			}
 		}
 	} else {
 		$np->nagios_exit(CRITICAL, "Could not connect to api url /servers/$small_id for mem_check");
@@ -277,6 +321,22 @@ sub check_disk_load {
 			print $response->as_string;
 			print "Disk usage - $hdd_stat" . "%" . "\n";
 		}
+		
+		if ($options->mhu) {
+			my $mhu = $options->mhu;
+			
+			if ($hdd_stat >= 80) {
+				$np->nagios_exit(WARNING, "Hdd usage warning - $hdd_stat %\n");
+			} elsif ($hdd_stat >= $mhu) {
+				$np->nagios_exit(CRITICAL, "Hdd usage critical - $hdd_stat %\n");
+			}
+		} else {
+			if ($hdd_stat >= 80) {
+				$np->nagios_exit(WARNING, "Memory load - $hdd_stat %\n");
+			} elsif ($hdd_stat >= 99) {
+				$np->nagios_exit(CRITICAL, "Hdd usage critical - $hdd_stat %\n");
+			}
+		}		
 	} else {
 		$np->nagios_exit(CRITICAL, "Could not connect to api url /servers/$small_id for disk_check");
 	}
@@ -302,13 +362,59 @@ sub testapi {
 
 }
 
+sub check_balance {
+	my $ua = LWP::UserAgent->new;
+	my $request = HTTP::Request->new('GET', $cmdurl . "/user/",
+									[	'X-Auth-Token' => $xtoken,
+										'Accept' => "application/json"
+									 ]
+								);
+	my $response = $ua->request($request);
+
+	if ($response->is_success(200)) {
+		
+		my $res = $response->content;
+		my $json_any = JSON::Any->new;
+		my $json_res = $json_any->from_json($res);
+		my $balance_stat = $json_res->{user}->{users_balance};
+		if ($options->verbose) {
+			print $response->as_string;
+			print "Account balance - $balance_stat" . " rur" . "\n";
+		}
+		
+		if ($balance_stat < 0) {
+			$np->nagios_exit(CRITICAL, "Negative account balance.\n");
+		}
+		
+	} else {
+		$np->nagios_exit(CRITICAL, "Could not connect to api url /user/ for balance_check");
+	}
+	
+}
+
 if ($options->testapi) {
 	testapi();
 	exit 0;
 }
-auth_api();
-get_servers();
+
+eval {
+	auth_api();
+}; if ($@) {
+	$np->nagios_exit(CRITICAL, "Could not auth whith auth_api subprogramm");
+}
+
+eval {
+	get_servers();
+}; if ($@) {
+	$np->nagios_exit(CRITICAL, "Could not get servers whith get_servers subprogramm");
+}
+
 check_state();
 check_cpu_load();
 check_mem_load();
 check_disk_load();
+
+
+if ($options->checkbalance) {
+	check_balance();
+}
