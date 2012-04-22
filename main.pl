@@ -1,5 +1,5 @@
 #!/usr/bin/perl -w
-# Clodo perl vps checker. v 0.1 by zen 
+# Clodo perl vps checker. v 1.0 stable by zen 
 # Contact me: chainwolf@clodo.ru
 # Git repo: https://github.com/Cepnoy/clodo-perl-vps-check
 
@@ -32,7 +32,7 @@ use vars qw(
 	$vps_type
 );
 
-$version = "v1.0";
+$version = "v1.0 stable";
 
 $usage = <<'EOT';
 clodo_monit --id=11111
