@@ -32,7 +32,7 @@ use vars qw(
 	$vps_type
 );
 
-$version = "v0.1";
+$version = "v1.0";
 
 $usage = <<'EOT';
 clodo_monit --id=11111
@@ -65,13 +65,25 @@ $np = Nagios::Plugin->new( shortname => 'CLODO_MONIT' );
 	
 	$options->arg(
 		spec	=> 'mcu=i',
-		help	=> 'set max cpu critical value in percent',
+		help	=> 'set max cpu critical value',
+		required => 0,
+	);
+	
+	$options->arg(
+		spec	=> 'wmcu=i',
+		help	=> 'set min cpu warning value',
 		required => 0,
 	);
 	
 	$options->arg(
 		spec	=> 'mm=i',
-		help	=> 'set max memory critical value in percent',
+		help	=> 'set max memory critical value',
+		required => 0,
+	);
+	
+	$options->arg(
+		spec	=> 'wmm=i',
+		help	=> 'set min memory warning value',
 		required => 0,
 	);
 	
@@ -90,6 +102,12 @@ $np = Nagios::Plugin->new( shortname => 'CLODO_MONIT' );
 	$options->arg(
 		spec	=> 'mhu=i',
 		help	=> 'set max hdd usage in percent',
+		required => 0,
+	);
+	
+	$options->arg(
+		spec	=> 'wmhu=i',
+		help	=> 'set min hdd usage warning value',
 		required => 0,
 	);
 	
@@ -236,10 +254,13 @@ sub check_cpu_load {
 		
 		$cpu_stat = int($cpu_stat);
 		
-		if ($options->mcu) {
+		if ($options->mcu && $options->wmcu) {
 				my $mcu = $options->mcu;
-				
-				if ($cpu_stat >= 10) {
+				my $wmcu = $options->wmcu;
+										
+				die ("Critical value cannot be less max value\n") if ($mcu < $wmcu);										
+										
+				if ($cpu_stat >= $wmcu) {
 					$np->nagios_exit(WARNING, "CPU load warning - $cpu_stat\n");
 				} elsif ($cpu_stat >= $mcu) {
 					$np->nagios_exit(CRITICAL, "CPU load critical - $cpu_stat\n");
@@ -281,10 +302,13 @@ sub check_mem_load {
 		
 		$mem_stat = int($mem_stat);
 		
-		if ($options->mm) {
-			my $mm = $options->mm;
+		if ($options->mm && $options->wmm) {
 			
-			if ($mem_stat >= 60) {
+			my $mm = $options->mm;
+			my $wmm = $options->wmm;
+			die ("Critical value cannot be less max value\n") if ($mm < $wmm);
+			
+			if ($mem_stat >= $wmm) {
 				$np->nagios_exit(WARNING, "Memory load warning - $mem_stat %\n");
 			} elsif ($mem_stat >= $mm) {
 				$np->nagios_exit(CRITICAL, "Memory load critical - $mem_stat %\n");
@@ -322,10 +346,13 @@ sub check_disk_load {
 			print "Disk usage - $hdd_stat" . "%" . "\n";
 		}
 		
-		if ($options->mhu) {
+		if ($options->mhu && $options->wmhu) {
 			my $mhu = $options->mhu;
+			my $wmhu = $options->wmhu;
 			
-			if ($hdd_stat >= 80) {
+			die ("Critical value cannot be less max value\n") if ($mhu < $wmhu);
+			
+			if ($hdd_stat >= $wmhu) {
 				$np->nagios_exit(WARNING, "Hdd usage warning - $hdd_stat %\n");
 			} elsif ($hdd_stat >= $mhu) {
 				$np->nagios_exit(CRITICAL, "Hdd usage critical - $hdd_stat %\n");
@@ -403,6 +430,10 @@ eval {
 	$np->nagios_exit(CRITICAL, "Could not auth whith auth_api subprogramm");
 }
 
+if ($options->checkbalance) {
+	check_balance();
+}
+
 eval {
 	get_servers();
 }; if ($@) {
@@ -415,6 +446,4 @@ check_mem_load();
 check_disk_load();
 
 
-if ($options->checkbalance) {
-	check_balance();
-}
+
