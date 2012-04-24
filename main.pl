@@ -1,5 +1,5 @@
 #!/usr/bin/perl -w
-# Clodo perl vps checker. v 1.0 stable by zen 
+# Clodo perl vps checker. v 1.1 unstable by zen 
 # Contact me: chainwolf@clodo.ru
 # Git repo: https://github.com/Cepnoy/clodo-perl-vps-check
 
@@ -12,6 +12,7 @@ use Nagios::Plugin;
 use HTTP::Request;
 use LWP::UserAgent;
 use JSON::Any;
+use Net::Ping;
 
 my $login = 'chainwolf@gmail.com';
 my $key = '1625aa135130ceffae4facb4fbfb4c7a';
@@ -30,9 +31,10 @@ use vars qw(
 	$id_loop
 	$small_id
 	$vps_type
+	$vps_ip
 );
 
-$version = "v1.0 stable";
+$version = "v1.1 unstable";
 
 $usage = <<'EOT';
 clodo_monit --id=11111
@@ -60,6 +62,12 @@ $np = Nagios::Plugin->new( shortname => 'CLODO_MONIT' );
 	$options->arg(
 		spec	=> 'id=s',
 		help	=>	'set vps id',
+		required => 1,
+	);
+	
+	$options->arg(
+		spec	=> 'ip=s',
+		help	=>	'set vps ip',
 		required => 1,
 	);
 	
@@ -119,6 +127,7 @@ $np = Nagios::Plugin->new( shortname => 'CLODO_MONIT' );
 	
 	$options->getopts();
 my $id = $options->id;
+my $vps_ip = $options->ip;
 
 sub auth_api {
 	my $ua = LWP::UserAgent->new;
@@ -219,6 +228,12 @@ sub check_state {
 		$vps_type = $json_res->{servers}->[$id_loop]->{type};
 		print "$id - $stat\n";
 		
+		my $p = Net::Ping->new("icmp",5);
+		if ($p->ping($vps_ip) == 0 && $stat ne "is_disabled") {
+			$np->nagios_exit(CRITICAL,"VPS not disabled in panel, but started.");
+			$p->close();
+		}
+			
 		if ($stat eq "is_disabled") {
 			exit 0;
 		}
@@ -434,6 +449,8 @@ if ($options->checkbalance) {
 	check_balance();
 }
 
+
+
 eval {
 	get_servers();
 }; if ($@) {
@@ -441,6 +458,7 @@ eval {
 }
 
 check_state();
+
 check_cpu_load();
 check_mem_load();
 check_disk_load();
