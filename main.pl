@@ -37,7 +37,7 @@ use vars qw(
 $version = "v1.1 unstable";
 
 $usage = <<'EOT';
-clodo_monit --id=11111
+clodo_monit --id=11111 --ip=1.1.1.1
 			[--testapi] [--mcci=value] [--mcc=value]
 			[--mm=value] [--mio=value] [--mhu=value]
 			[--checkbalance] [--version]
@@ -231,7 +231,6 @@ sub check_state {
 		if ($stat eq "is_disabled") {
 			exit 0;
 		}
-		
 		
 		my $p = Net::Ping->new("icmp",5);
 		if ($p->ping($vps_ip) == 0 && $stat ne "is_disabled") {
