@@ -232,6 +232,7 @@ sub check_state {
 			exit 0;
 		}
 		
+		
 		my $p = Net::Ping->new("icmp",5);
 		if ($p->ping($vps_ip) == 0 && $stat ne "is_disabled") {
 			$np->nagios_exit(CRITICAL,"VPS not disabled in panel, but started.");
