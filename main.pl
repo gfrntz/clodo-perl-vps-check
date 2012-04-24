@@ -228,15 +228,17 @@ sub check_state {
 		$vps_type = $json_res->{servers}->[$id_loop]->{type};
 		print "$id - $stat\n";
 		
+		if ($stat eq "is_disabled") {
+			exit 0;
+		}
+		
 		my $p = Net::Ping->new("icmp",5);
 		if ($p->ping($vps_ip) == 0 && $stat ne "is_disabled") {
 			$np->nagios_exit(CRITICAL,"VPS not disabled in panel, but started.");
 			$p->close();
 		}
 			
-		if ($stat eq "is_disabled") {
-			exit 0;
-		}
+
 		
 	} else {
 		$np->nagios_exit(CRITICAL, "Could not connect to api url /servers.");
