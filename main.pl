@@ -242,7 +242,15 @@ sub check_state {
 			$np->nagios_exit(CRITICAL,"VPS  disabled in panel, but started.");
 			$p->close();
 		}
-			
+		
+		my $ip_http = "http://" . $vps_ip;
+		
+		my $get_ok = HTTP::Request->new('GET', $ip_http);
+		my $get_ok_response = $ua->request($get_ok);
+		
+		if ($get_ok_response->code != 200) {
+			$np->nagios_exit(WARNING, "VPS enabled, ping ok, but http not 200.");
+		}
 
 		
 	} else {
@@ -460,9 +468,11 @@ if ($options->checkbalance) {
 
 eval {
 	get_servers();
-}; if ($@) {
-	$np->nagios_exit(CRITICAL, "Could not get servers whith get_servers subprogramm");
-}
+};
+
+# if ($@) {
+#	$np->nagios_exit(CRITICAL, "Could not get servers whith get_servers subprogramm");
+#}
 
 check_state();
 
