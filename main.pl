@@ -3,7 +3,7 @@
 # Contact me: chainwolf@clodo.ru
 # Git repo: https://github.com/Cepnoy/clodo-perl-vps-check
 
-push(@INC,"./");
+
 
 use strict;
 use Nagios::Plugin::Getopt;
@@ -14,9 +14,7 @@ use LWP::UserAgent;
 use JSON::Any;
 use Net::Ping;
 
-my $login = 'chainwolf@gmail.com';
-my $key = '1625aa135130ceffae4facb4fbfb4c7a';
-my $apiurl = 'https://testapi.kh.clodo.ru';
+my $apiurl = 'https://api.clodo.ru';
 
 use vars qw(
 	$np
@@ -32,12 +30,14 @@ use vars qw(
 	$small_id
 	$vps_type
 	$vps_ip
+	$login
+	$key
 );
 
 $version = "v1.1 unstable";
 
 $usage = <<'EOT';
-clodo_monit --id=11111 --ip=1.1.1.1
+clodo_monit --id=11111 --ip=1.1.1.1 --login=some@login.ru --key=kdkd93k3d90dk
 			[--testapi] [--mcci=value] [--mcc=value]
 			[--mm=value] [--mio=value] [--mhu=value]
 			[--checkbalance] [--version]
@@ -72,6 +72,18 @@ $np = Nagios::Plugin->new( shortname => 'CLODO_MONIT' );
 	);
 	
 	$options->arg(
+		spec	=> 'login=s',
+		help	=> 'set vps login',
+		required => 1,
+	);
+	
+	$options->arg(
+		spec	=> 'key=s',
+		help	=> 'set api key',
+		required => 1,
+	);
+	
+	$options->arg(
 		spec	=> 'mcu=i',
 		help	=> 'set max cpu critical value',
 		required => 0,
@@ -95,18 +107,6 @@ $np = Nagios::Plugin->new( shortname => 'CLODO_MONIT' );
 		required => 0,
 	);
 	
-#	$options->arg(
-#		spec	=> 'mii=i',
-#		help	=> 'set max interface input traffic',
-#		required => 0,
-#	);
-	
-#	$options->arg(
-#		spec	=> 'mio=i',
-#		help	=> 'set max output interface traffic',
-#		required => 0,
-#	);
-
 	$options->arg(
 		spec	=> 'mhu=i',
 		help	=> 'set max hdd usage in percent',
@@ -124,8 +124,13 @@ $np = Nagios::Plugin->new( shortname => 'CLODO_MONIT' );
 		help	=> 'check negative balance',
 		required => 0,
 	);
+
 	
 	$options->getopts();
+
+$login = $options->login;
+$key = $options->key;
+
 my $id = $options->id;
 my $vps_ip = $options->ip;
 
@@ -232,7 +237,7 @@ sub check_state {
 			exit 0;
 		}
 		
-		my $p = Net::Ping->new("icmp",5);
+		my $p = Net::Ping->new("udp",5);
 		if ($p->ping($vps_ip) == 0 && $stat ne "is_disabled") {
 			$np->nagios_exit(CRITICAL,"VPS not disabled in panel, but started.");
 			$p->close();
