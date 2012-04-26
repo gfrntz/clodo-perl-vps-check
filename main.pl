@@ -1,5 +1,5 @@
 #!/usr/bin/perl -w
-# Clodo perl vps checker. v 1.1 unstable by zen 
+# Clodo perl vps checker. v 1.2 unstable by zen 
 # Contact me: chainwolf@clodo.ru
 # Git repo: https://github.com/Cepnoy/clodo-perl-vps-check
 
@@ -34,7 +34,7 @@ use vars qw(
 	$key
 );
 
-$version = "v1.1 unstable";
+$version = "v1.2 unstable";
 
 $usage = <<'EOT';
 clodo_monit --id=11111 --ip=1.1.1.1 --login=some@login.ru --key=kdkd93k3d90dk
@@ -238,8 +238,8 @@ sub check_state {
 		}
 		
 		my $p = Net::Ping->new("udp",5);
-		if ($p->ping($vps_ip) == 0 && $stat ne "is_disabled") {
-			$np->nagios_exit(CRITICAL,"VPS not disabled in panel, but started.");
+		if ($p->ping($vps_ip) == 0 && $stat eq "is_disabled") {
+			$np->nagios_exit(CRITICAL,"VPS  disabled in panel, but started.");
 			$p->close();
 		}
 			
