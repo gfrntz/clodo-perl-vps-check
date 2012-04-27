@@ -28,7 +28,6 @@ use vars qw(
 	$cmdurl
 	$id_loop
 	$small_id
-	$vps_type
 	$vps_ip
 	$login
 	$key
@@ -161,7 +160,7 @@ sub auth_api {
 }
 
 sub get_servers {
-	my ($i,$j);
+	my ($i,$j,$ids,$ips);
 	my $ua = LWP::UserAgent->new;
 	my $request = HTTP::Request->new('GET', $cmdurl . "/servers",
 									[	'X-Auth-Token' => $xtoken,
@@ -181,12 +180,27 @@ sub get_servers {
 		my ($json_res,@srv_ids);
 		my $json_any = JSON::Any->new;
 		$json_res = $json_any->from_json($res);
+		my %ep_hash;
 
-
-		for my $ids( @{$json_res->{servers}} ){
-			push @srv_ids, $ids->{full_id};
+		for $ips( @{$json_res->{servers}} ){
+			 %ep_hash = ();
+			$ep_hash{full_id} = "Vps id  $ips->{full_id}";
+			$ep_hash{name} = "vps name  $ips->{name}";
+			$ep_hash{addresses} = "ip $ips->{addresses}->{public}->[0]->{ip}";
+		
+			while (my($k, $v) = each (%ep_hash)){
+				print "$k => $v\n";
+				print "======\n";
+			}
+        $ips++;
 		}
 		
+		$json_res = $json_any->from_json($res);
+
+		for  $ids( @{$json_res->{servers}} ){
+			push @srv_ids, $ids->{full_id};
+		}
+
 		$j = @srv_ids;
 	
 		if ($options->verbose) {
@@ -203,7 +217,10 @@ sub get_servers {
 			} 
 		}
 
+		
+
 		die ("Server id not found!\n") if (!defined $id_loop);
+
 
 	} else {
 		print "Not ok.\n";
@@ -230,7 +247,7 @@ sub check_state {
 		my $json_res = $json_any->from_json($res);
 		my $stat = $json_res->{servers}->[$id_loop]->{status};
 		$small_id = $json_res->{servers}->[$id_loop]->{id};
-		$vps_type = $json_res->{servers}->[$id_loop]->{type};
+#		$vps_type = $json_res->{servers}->[$id_loop]->{type};
 		print "$id - $stat\n";
 		
 		if ($stat eq "is_disabled") {
@@ -468,11 +485,9 @@ if ($options->checkbalance) {
 
 eval {
 	get_servers();
-};
-
-# if ($@) {
-#	$np->nagios_exit(CRITICAL, "Could not get servers whith get_servers subprogramm");
-#}
+};  if ($@) {
+	$np->nagios_exit(CRITICAL, "Could not get servers whith get_servers subprogramm");
+}
 
 check_state();
 
