@@ -19,6 +19,7 @@ my $apiurl = 'https://api.clodo.ru';
 use vars qw(
 	$np
 	$options
+	$extra
 	$usage
 	$version
 	$apiurl
@@ -46,16 +47,37 @@ $version = "v2.0 stable";
 
 $usage = <<'EOT';
 clodo_monit --ip=1.1.1.1 --login=some@login.ru --key=kdkd93k3d90dk
-			[--mcci=value] [--mcc=value]
+			[--mcci=value] [--mcc=value] [--httpcheck]
 			[--mm=value] [--mio=value] [--mhu=value]
 			[--checkbalance] [--version]
 EOT
 
+$extra = <<'EOT';
+Some examples 
+
+DEFAULT:
+clodo_monit.pl --ip=1.2.1.2 --login=some@mail.tld --key=222222ddaesdfaesfes3 
+
+OUTPUT:
+CLODO_MONIT CRITICAL - CPU Critical - 49;
+
+If all checks ok, then nothing.
+
+With extra options:
+clodo_monit.pl --ip=1.2.1.2 --login=some@mail.tld --key=222222ddaesdfaesfes3 --wmhu=2 --mhu=10
+CLODO_MONIT CRITICAL - CPU Critical - 49; Hdd usage critical - 17 %
+
+Or like this:
+clodo_monit.pl --ip=1.2.1.2 --login=some@mail.tld --key=222222ddaesdfaesfes3 --wmhu=2 --mhu=90
+CLODO_MONIT CRITICAL - CPU Critical - 49 Hdd usage warning - 17 %
+
+EOT
 
 $np = Nagios::Plugin->new( shortname => 'CLODO_MONIT' );
 
 	$options = Nagios::Plugin::Getopt->new(
 		usage	=> $usage,
+		extra   => $extra,
 		version	=> $version,
 		url		=> 'https://github.com/Cepnoy/clodo-perl-vps-check',
 		blurb	=> 'Check clodo corp client\'s vps',
@@ -237,7 +259,7 @@ sub get_servers {
 			my $get_ok_response = $ua->request($get_ok);
 		
 			if ($get_ok_response->code != 200) {
-				$np->nagios_exit(WARNING, "VPS enabled, ping ok, but http not 200.");
+				$np->add_message(WARNING, "VPS enabled, ping ok, but http not 200.");
 			}
 		}
 		
@@ -392,7 +414,7 @@ if (@critical) {
     nagios_exit( WARNING, join(' ', @warning) );
   }
 =cut
-my ($code, $message) = $np->check_messages(join => ';', join_all => ' ');
+my ($code, $message) = $np->check_messages(join => '; ', join_all => ' ');
 
 $np->nagios_exit(
 				message => $message,
