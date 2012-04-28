@@ -1,5 +1,5 @@
 #!/usr/bin/perl -w
-# Clodo perl vps checker. v 1.2 unstable by zen 
+# Clodo perl vps checker. v 2.0 stable by zen 
 # Contact me: chainwolf@clodo.ru
 # Git repo: https://github.com/Cepnoy/clodo-perl-vps-check
 
@@ -20,25 +20,33 @@ use vars qw(
 	$np
 	$options
 	$usage
-	$extra
 	$version
 	$apiurl
-	$verbose
 	$xtoken
 	$cmdurl
-	$id_loop
 	$small_id
 	$vps_type
 	$vps_ip
 	$login
 	$key
+	%content
+	$content
+	$response
+	$hash
+	$res
+	$json_res
+	$json_any
+	$cpu_stat
+	$mem_stat
+	$hdd_stat
+
 );
 
-$version = "v1.2 unstable";
+$version = "v2.0 stable";
 
 $usage = <<'EOT';
-clodo_monit --id=11111 --ip=1.1.1.1 --login=some@login.ru --key=kdkd93k3d90dk
-			[--testapi] [--mcci=value] [--mcc=value]
+clodo_monit --ip=1.1.1.1 --login=some@login.ru --key=kdkd93k3d90dk
+			[--mcci=value] [--mcc=value]
 			[--mm=value] [--mio=value] [--mhu=value]
 			[--checkbalance] [--version]
 EOT
@@ -52,19 +60,7 @@ $np = Nagios::Plugin->new( shortname => 'CLODO_MONIT' );
 		url		=> 'https://github.com/Cepnoy/clodo-perl-vps-check',
 		blurb	=> 'Check clodo corp client\'s vps',
 	);	
-		
-	$options->arg(
-		spec	=> 'testapi',
-		help	=> 'test api connect',
-		required => 0,
-	);
-
-	$options->arg(
-		spec	=> 'id=s',
-		help	=>	'set vps id',
-		required => 1,
-	);
-	
+			
 	$options->arg(
 		spec	=> 'ip=s',
 		help	=>	'set vps ip',
@@ -85,37 +81,37 @@ $np = Nagios::Plugin->new( shortname => 'CLODO_MONIT' );
 	
 	$options->arg(
 		spec	=> 'mcu=i',
-		help	=> 'set max cpu critical value',
+		help	=> 'set max cpu critical value in integers',
 		required => 0,
 	);
 	
 	$options->arg(
 		spec	=> 'wmcu=i',
-		help	=> 'set min cpu warning value',
+		help	=> 'set min cpu warning value in integers',
 		required => 0,
 	);
 	
 	$options->arg(
 		spec	=> 'mm=i',
-		help	=> 'set max memory critical value',
+		help	=> 'set max memory critical value in integers',
 		required => 0,
 	);
 	
 	$options->arg(
 		spec	=> 'wmm=i',
-		help	=> 'set min memory warning value',
+		help	=> 'set min memory warning value in integers',
 		required => 0,
 	);
 	
 	$options->arg(
 		spec	=> 'mhu=i',
-		help	=> 'set max hdd usage in percent',
+		help	=> 'set max hdd usage in percent in integers',
 		required => 0,
 	);
 	
 	$options->arg(
 		spec	=> 'wmhu=i',
-		help	=> 'set min hdd usage warning value',
+		help	=> 'set min hdd usage warning value in integers',
 		required => 0,
 	);
 	
@@ -124,25 +120,55 @@ $np = Nagios::Plugin->new( shortname => 'CLODO_MONIT' );
 		help	=> 'check negative balance',
 		required => 0,
 	);
+	
+	$options->arg(
+		spec	=> 'httpcheck',
+		help	=> 'check http 200 ok',
+		required => 0,
+	);
 
 	
 	$options->getopts();
 
 $login = $options->login;
 $key = $options->key;
+$vps_ip = $options->ip;
 
-my $id = $options->id;
-my $vps_ip = $options->ip;
-
-sub auth_api {
-	my $ua = LWP::UserAgent->new;
-	my $request = HTTP::Request->new('GET', $apiurl,
+sub auth {
+	my $url = shift;
+	
+	if (!defined $url) {
+		my $ua = LWP::UserAgent->new;
+		my $request = HTTP::Request->new('GET', $apiurl,
 							[   'X-Auth-User' => $login,
 								'X-Auth-Key'  => $key,
 							]
-	);
+		);
+		
+		$response = $ua->request($request);
+				
+	} else {
+		
+		if ($options->verbose) {
+			print "else\n";
+			print "X-token = $xtoken\n";
+			print "Cmd url = $cmdurl" . "$url\n";
+		}
 
-	my $response = $ua->request($request);
+		my $ua = LWP::UserAgent->new;
+		my $request = HTTP::Request->new('GET', $cmdurl . $url,
+									[	'X-Auth-Token' => $xtoken,
+										'Accept' => "application/json"
+									 ]
+		);
+		
+		$response = $ua->request($request);		
+	}
+}
+
+sub auth_api {
+
+	&auth;
 
 	if ($response->is_success(204)) {
 
@@ -161,175 +187,116 @@ sub auth_api {
 }
 
 sub get_servers {
-	my ($i,$j);
-	my $ua = LWP::UserAgent->new;
-	my $request = HTTP::Request->new('GET', $cmdurl . "/servers",
-									[	'X-Auth-Token' => $xtoken,
-										'Accept' => "application/json"
-									 ]
-								);
-	my $response = $ua->request($request);
+	
+	auth("/servers");
+		
+	if ($response->is_success(204)) {
 
-	if ($response->is_success(200)) {
-		my $res = $response->content;
-			
+		 $res = $response->content;
+
 		if ($options->verbose) {
 			print "/servers response content\n";
 			print "$res\n";
 		}
-
-		my ($json_res,@srv_ids);
-		my $json_any = JSON::Any->new;
+		
+		$json_any = JSON::Any->new;
 		$json_res = $json_any->from_json($res);
-
-
-		for my $ids( @{$json_res->{servers}} ){
-			push @srv_ids, $ids->{full_id};
-		}
 		
-		$j = @srv_ids;
-	
-		if ($options->verbose) {
-			print "Number of servers in acc - $j\n";
-		}
-	
-		for ($i=0;$i<$j;$i++) {
-			if($srv_ids[$i] eq $id) {
-				if ($options->verbose) {
-					print "This is $srv_ids[$i]\n";
+		for $hash( @{$json_res->{servers}} ){
+			%content = ();
+			$content{full_id} = $hash -> {full_id};
+			$content{id}	  = $hash -> {id};
+			$content{adddresses} = $hash -> {addresses} -> {public} -> [0] -> {ip};
+			$content{status} = $hash -> {status};
+		
+			if ($vps_ip eq $content{adddresses}) {
+				if ($options->verbose) {			
+					print "Вот он!! Вот он адрес моей мечты!\n";
+					print "full_id - $content{full_id} id - $content{id} ip - $content{adddresses} status - $content{status}\n";
 				}
-				$id_loop = $i;
-				last;
-			} 
-		}
-
-		die ("Server id not found!\n") if (!defined $id_loop);
-
-	} else {
-		print "Not ok.\n";
-		die $response->status_line;
-	}
-	
-}
-
-sub check_state {
-	my $ua = LWP::UserAgent->new;
-	my $request = HTTP::Request->new('GET', $cmdurl . "/servers",
-									[	'X-Auth-Token' => $xtoken,
-										'Accept' => "application/json"
-									 ]
-								);
-	my $response = $ua->request($request);
-
-	if ($response->is_success(200)) {
-		if ($options->verbose) {
-			print $response->as_string;
-		}
-		my $res = $response->content;
-		my $json_any = JSON::Any->new;
-		my $json_res = $json_any->from_json($res);
-		my $stat = $json_res->{servers}->[$id_loop]->{status};
-		$small_id = $json_res->{servers}->[$id_loop]->{id};
-		$vps_type = $json_res->{servers}->[$id_loop]->{type};
-		print "$id - $stat\n";
-		
-		if ($stat eq "is_disabled") {
-			exit 0;
+				last
+			}
+			$hash++;
 		}
 		
-		my $p = Net::Ping->new("udp",5);
-		if ($p->ping($vps_ip) == 0 && $stat eq "is_disabled") {
+		if ($content{status} eq "is_disabled") {
+			$np->nagios_exit(OK, "Nothing to do");
+		}
+		
+		my $p = Net::Ping->new("icmp",5);
+		if ($p->ping($vps_ip) == 0 && $content{status} eq "is_disabled") {
 			$np->nagios_exit(CRITICAL,"VPS  disabled in panel, but started.");
 			$p->close();
 		}
 		
 		my $ip_http = "http://" . $vps_ip;
-		
-		my $get_ok = HTTP::Request->new('GET', $ip_http);
-		my $get_ok_response = $ua->request($get_ok);
-		
-		if ($get_ok_response->code != 200) {
-			$np->nagios_exit(WARNING, "VPS enabled, ping ok, but http not 200.");
-		}
 
+		if ($options->httpcheck) {
+			my $ua = LWP::UserAgent->new;
+			my $get_ok = HTTP::Request->new('GET', $ip_http);
+			my $get_ok_response = $ua->request($get_ok);
 		
-	} else {
-		$np->nagios_exit(CRITICAL, "Could not connect to api url /servers.");
-	}
-	
-	return my $stat;
-	
-}
-
-sub check_cpu_load {
-	my $ua = LWP::UserAgent->new;
-	my $request = HTTP::Request->new('GET', $cmdurl . "/servers/$small_id",
-									[	'X-Auth-Token' => $xtoken,
-										'Accept' => "application/json"
-									 ]
-								);
-	my $response = $ua->request($request);
-
-	if ($response->is_success(200)) {
-		
-		my $res = $response->content;
-		my $json_any = JSON::Any->new;
-		my $json_res = $json_any->from_json($res);
-		my $cpu_stat = $json_res->{server}->{vps_cpu_load};
-		
-		if ($options->verbose) {
-			print $response->as_string;
-			print "Cpu load - $cpu_stat" . "%" . "\n";
-		}
-		
-		$cpu_stat = int($cpu_stat);
-		
-		if ($options->mcu && $options->wmcu) {
-				my $mcu = $options->mcu;
-				my $wmcu = $options->wmcu;
-										
-				die ("Critical value cannot be less max value\n") if ($mcu < $wmcu);										
-										
-				if ($cpu_stat >= $wmcu) {
-					$np->nagios_exit(WARNING, "CPU load warning - $cpu_stat\n");
-				} elsif ($cpu_stat >= $mcu) {
-					$np->nagios_exit(CRITICAL, "CPU load critical - $cpu_stat\n");
-				}
-		} else {
-		
-			if ($cpu_stat >= 10) {
-				$np->nagios_exit(WARNING, "CPU load warning- $cpu_stat\n");
-			} elsif ($cpu_stat >= 20) {
-				$np->nagios_exit(CRITICAL, "CPU load critical - $cpu_stat\n");
+			if ($get_ok_response->code != 200) {
+				$np->nagios_exit(WARNING, "VPS enabled, ping ok, but http not 200.");
 			}
 		}
+		
 	} else {
-		$np->nagios_exit(CRITICAL, "Could not connect to api url /servers/$small_id for cpu check");
+			$np->nagios_exit(CRITICAL, "Could not connect to api");
 	}
 	
+	auth("/servers/$content{id}");
+	
+	if ($response->is_success(204)) {
+		$res = $response->content;
+
+		if ($options->verbose) {
+			print "/servers/$content{id} response content\n";
+			print "$res\n";
+		}
+	
+		$json_any = JSON::Any->new;
+		$json_res = $json_any->from_json($res);
+		
+		$cpu_stat = $json_res->{server}->{vps_cpu_load};
+		$mem_stat = $json_res->{server}->{vps_mem_load};
+		$hdd_stat = $json_res->{server}->{vps_disk_load};
+		
+		if ($options->verbose) {
+			print "CPU STAT - $cpu_stat%\n";
+			print "MEM STAT - $mem_stat%\n";
+			print "HDD STAT - $hdd_stat%\n";
+		}
+	} else {
+			$np->nagios_exit(CRITICAL, "Could not connect to /servers/$content{id} api");
+	}
+	
+}	
+
+
+
+
+sub check_cpu_load {
+		$cpu_stat = int($cpu_stat);
+		if (defined $options->mcu && defined $options->wmcu) {
+				my $mcu = $options->mcu;
+				my $wmcu = $options->wmcu;
+				die ("Critical value cannot be less max value\n") if ($mcu < $wmcu);										
+				if ($cpu_stat >= $wmcu && $cpu_stat < $mcu) {
+					$np->add_message(WARNING, "Warning cpu value - $cpu_stat");
+				} elsif ($cpu_stat >= $mcu) {
+					$np->add_message(CRITICAL, "CPU Critical - $cpu_stat");
+				}
+		} else {
+			if ($cpu_stat >= 10 && $cpu_stat < 20) {
+				$np->add_message(WARNING, "Warning cpu value - $cpu_stat");
+			} elsif ($cpu_stat >= 20) {
+				$np->add_message(CRITICAL, "CPU Critical - $cpu_stat");
+			}
+		}
 }
 
 sub check_mem_load {
-	my $ua = LWP::UserAgent->new;
-	my $request = HTTP::Request->new('GET', $cmdurl . "/servers/$small_id",
-									[	'X-Auth-Token' => $xtoken,
-										'Accept' => "application/json"
-									 ]
-								);
-	my $response = $ua->request($request);
-
-	if ($response->is_success(200)) {
-		
-		my $res = $response->content;
-		my $json_any = JSON::Any->new;
-		my $json_res = $json_any->from_json($res);
-		my $mem_stat = $json_res->{server}->{vps_mem_load};
-	
-		if ($options->verbose) {
-			print $response->as_string;
-			print "Mem stat - $mem_stat" . "%" . "\n";
-		}
-		
 		$mem_stat = int($mem_stat);
 		
 		if ($options->mm && $options->wmm) {
@@ -338,43 +305,22 @@ sub check_mem_load {
 			my $wmm = $options->wmm;
 			die ("Critical value cannot be less max value\n") if ($mm < $wmm);
 			
-			if ($mem_stat >= $wmm) {
-				$np->nagios_exit(WARNING, "Memory load warning - $mem_stat %\n");
+			if ($mem_stat >= $wmm && $mem_stat < $mm) {
+				$np->add_message(WARNING, "Memory load warning - $mem_stat %\n");
 			} elsif ($mem_stat >= $mm) {
-				$np->nagios_exit(CRITICAL, "Memory load critical - $mem_stat %\n");
+				$np->add_message(CRITICAL, "Memory load critical - $mem_stat %\n");
 			}
 		} else {
-			if ($mem_stat >= 60) {
-				$np->nagios_exit(WARNING, "Memory load warning - $mem_stat %\n");
+			if ($mem_stat >= 60 && $mem_stat < 98) {
+				$np->add_message(WARNING, "Memory load warning - $mem_stat %\n");
 			} elsif ($mem_stat >= 98) {
-				$np->nagios_exit(CRITICAL, "Memory load critical - $mem_stat %\n");
+				$np->add_message(CRITICAL, "Memory load critical - $mem_stat %\n");
 			}
-		}
-	} else {
-		$np->nagios_exit(CRITICAL, "Could not connect to api url /servers/$small_id for mem_check");
-	}
-	
+		}	
 }
 
-sub check_disk_load {
-	my $ua = LWP::UserAgent->new;
-	my $request = HTTP::Request->new('GET', $cmdurl . "/servers/$small_id",
-									[	'X-Auth-Token' => $xtoken,
-										'Accept' => "application/json"
-									 ]
-								);
-	my $response = $ua->request($request);
 
-	if ($response->is_success(200)) {
-		
-		my $res = $response->content;
-		my $json_any = JSON::Any->new;
-		my $json_res = $json_any->from_json($res);
-		my $hdd_stat = $json_res->{server}->{vps_disk_load};
-		if ($options->verbose) {
-			print $response->as_string;
-			print "Disk usage - $hdd_stat" . "%" . "\n";
-		}
+sub check_disk_load {
 		
 		if ($options->mhu && $options->wmhu) {
 			my $mhu = $options->mhu;
@@ -382,51 +328,22 @@ sub check_disk_load {
 			
 			die ("Critical value cannot be less max value\n") if ($mhu < $wmhu);
 			
-			if ($hdd_stat >= $wmhu) {
-				$np->nagios_exit(WARNING, "Hdd usage warning - $hdd_stat %\n");
+			if ($hdd_stat >= $wmhu && $hdd_stat < $mhu) {
+				$np->add_message(WARNING, "Hdd usage warning - $hdd_stat %\n");
 			} elsif ($hdd_stat >= $mhu) {
-				$np->nagios_exit(CRITICAL, "Hdd usage critical - $hdd_stat %\n");
+				$np->add_message(CRITICAL, "Hdd usage critical - $hdd_stat %\n");
 			}
 		} else {
-			if ($hdd_stat >= 80) {
-				$np->nagios_exit(WARNING, "Memory load - $hdd_stat %\n");
+			if ($hdd_stat >= 80 && $hdd_stat < 98) {
+				$np->add_message(WARNING, "Memory load - $hdd_stat %\n");
 			} elsif ($hdd_stat >= 99) {
-				$np->nagios_exit(CRITICAL, "Hdd usage critical - $hdd_stat %\n");
+				$np->add_message(CRITICAL, "Hdd usage critical - $hdd_stat %\n");
 			}
 		}		
-	} else {
-		$np->nagios_exit(CRITICAL, "Could not connect to api url /servers/$small_id for disk_check");
-	}
-	
-}
-
-sub testapi {
-	my $ua = LWP::UserAgent->new;
-	my $request = HTTP::Request->new('GET', $apiurl,
-							[   'X-Auth-User' => $login,
-								'X-Auth-Key'  => $key,
-							]
-	);
-
-	my $response = $ua->request($request);
-
-	if ($response->is_success(204)) {
-		print "Test api success! Exit for nothing.\n";
-		
-	} else {
-		die $response->status_line;
-	}
-
 }
 
 sub check_balance {
-	my $ua = LWP::UserAgent->new;
-	my $request = HTTP::Request->new('GET', $cmdurl . "/user/",
-									[	'X-Auth-Token' => $xtoken,
-										'Accept' => "application/json"
-									 ]
-								);
-	my $response = $ua->request($request);
+	auth("/user/");
 
 	if ($response->is_success(200)) {
 		
@@ -440,45 +357,45 @@ sub check_balance {
 		}
 		
 		if ($balance_stat < 0) {
-			$np->nagios_exit(CRITICAL, "Negative account balance.\n");
+			$np->add_message(CRITICAL, "Negative account balance.\n");
 		}
 		
 	} else {
-		$np->nagios_exit(CRITICAL, "Could not connect to api url /user/ for balance_check");
+		$np->add_message(CRITICAL, "Could not connect to api url /user/ for balance_check");
 	}
 	
 }
 
-if ($options->testapi) {
-	testapi();
-	exit 0;
-}
 
-eval {
-	auth_api();
-}; if ($@) {
-	$np->nagios_exit(CRITICAL, "Could not auth whith auth_api subprogramm");
-}
+
+auth_api();
+
+
+
+get_servers();
+
+
+check_mem_load();
+
+check_cpu_load();
+
+check_disk_load();
 
 if ($options->checkbalance) {
 	check_balance();
 }
 
+=pod
+if (@critical) {
+    nagios_exit( CRITICAL, join(' ', @critical) );
+  } elsif (@warning) {
+    nagios_exit( WARNING, join(' ', @warning) );
+  }
+=cut
+my ($code, $message) = $np->check_messages(join => ';', join_all => ' ');
 
-
-eval {
-	get_servers();
-};
-
-# if ($@) {
-#	$np->nagios_exit(CRITICAL, "Could not get servers whith get_servers subprogramm");
-#}
-
-check_state();
-
-check_cpu_load();
-check_mem_load();
-check_disk_load();
-
-
+$np->nagios_exit(
+				message => $message,
+				return_code => $code,
+);
 
