@@ -388,14 +388,9 @@ sub check_balance {
 	
 }
 
-
-
 auth_api();
 
-
-
 get_servers();
-
 
 check_mem_load();
 
@@ -407,13 +402,6 @@ if ($options->checkbalance) {
 	check_balance();
 }
 
-=pod
-if (@critical) {
-    nagios_exit( CRITICAL, join(' ', @critical) );
-  } elsif (@warning) {
-    nagios_exit( WARNING, join(' ', @warning) );
-  }
-=cut
 my ($code, $message) = $np->check_messages(join => '; ', join_all => ' ');
 
 $np->nagios_exit(
