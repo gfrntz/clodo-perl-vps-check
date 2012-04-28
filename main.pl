@@ -47,8 +47,8 @@ $version = "v2.0 stable";
 
 $usage = <<'EOT';
 clodo_monit --ip=1.1.1.1 --login=some@login.ru --key=kdkd93k3d90dk
-			[--mcci=value] [--mcc=value] [--httpcheck]
-			[--mm=value] [--mio=value] [--mhu=value]
+			[--mcu=value] [--wmcu=value] [--httpcheck]
+			[--mm=value] [--wmm=value] [--mhu=value] [--wmhu=value]
 			[--checkbalance] [--version]
 EOT
 
@@ -405,7 +405,7 @@ if ($options->checkbalance) {
 	check_balance();
 }
 
-my ($code, $message) = $np->check_messages(join => '; ', join_all => ' ');
+my ($code, $message) = $np->check_messages(join => '; ', join_all => '; ');
 
 $np->nagios_exit(
 				message => $message,
