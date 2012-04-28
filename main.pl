@@ -209,7 +209,7 @@ sub auth_api {
 }
 
 sub get_servers {
-	
+	my $p;
 	auth("/servers");
 		
 	if ($response->is_success(204)) {
@@ -242,12 +242,15 @@ sub get_servers {
 		}
 		
 		if ($content{status} eq "is_disabled") {
-			$np->nagios_exit(OK, "Nothing to do");
+			$np->nagios_exit(OK, "Nothing to do, because vps is disabled.");
 		}
 		
-		my $p = Net::Ping->new("icmp",5);
-		if ($p->ping($vps_ip) == 0 && $content{status} eq "is_disabled") {
+		$p = Net::Ping->new("icmp",5);
+		if ($p->ping($vps_ip) == 1 && $content{status} eq "is_disabled") {
 			$np->nagios_exit(CRITICAL,"VPS  disabled in panel, but started.");
+			$p->close();
+		} elsif ($p->ping($vps_ip) == 0 && $content{status} eq "is_running") {
+			$np->add_message(CRITICAL, "VPS running, but ping not ok.");
 			$p->close();
 		}
 		
