@@ -285,15 +285,15 @@ sub check_cpu_load {
 				die ("Critical value cannot be less max value\n") if ($mcu < $wmcu);										
 				
 				if ($cpu_stat >= $wmcu && $cpu_stat < $mcu) {
-					$np->add_message(WARNING, "Warning cpu value - $cpu_stat");
+					$np->add_message(WARNING, "Warning cpu value - $cpu_stat %");
 				} elsif ($cpu_stat >= $mcu) {
-					$np->add_message(CRITICAL, "CPU Critical - $cpu_stat");
+					$np->add_message(CRITICAL, "CPU Critical - $cpu_stat %");
 				}
 		} else {
 			if ($cpu_stat >= 10 && $cpu_stat < 20) {
-				$np->add_message(WARNING, "Warning cpu value - $cpu_stat");
+				$np->add_message(WARNING, "Warning cpu value - $cpu_stat %");
 			} elsif ($cpu_stat >= 20) {
-				$np->add_message(CRITICAL, "CPU Critical - $cpu_stat");
+				$np->add_message(CRITICAL, "CPU Critical - $cpu_stat %");
 			}
 		}
 }
