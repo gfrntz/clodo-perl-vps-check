@@ -23,8 +23,6 @@ use vars qw(
 	$apiurl
 	$xtoken
 	$cmdurl
-	$small_id
-	$vps_type
 	$vps_ip
 	$login
 	$key
