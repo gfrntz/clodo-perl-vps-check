@@ -143,9 +143,8 @@ $np = Nagios::Plugin->new( shortname => 'CLODO_MONIT' );
 		help	=> 'check http 200 ok',
 		required => 0,
 	);
-
 	
-	$options->getopts();
+$options->getopts();
 
 $login = $options->login;
 $key = $options->key;
@@ -192,7 +191,6 @@ sub auth_api {
 	} else {
 		die $response->status_line;
 	}
-
 }
 
 sub get_servers {
@@ -219,7 +217,6 @@ sub get_servers {
 		
 			if ($vps_ip eq $content{adddresses}) {
 				if ($options->verbose) {			
-					print "\nВот он!! Вот он адрес моей мечты!\n";
 					print "\nfull_id - $content{full_id}\nid - $content{id}\nip - $content{adddresses}\nstatus - $content{status}\n\n";
 				}
 				last
