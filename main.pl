@@ -5,7 +5,6 @@
 
 use strict;
 use Nagios::Plugin::Getopt;
-use Nagios::Plugin::Threshold;
 use Nagios::Plugin;
 use HTTP::Request;
 use LWP::UserAgent;
