@@ -3,8 +3,6 @@
 # Contact me: chainwolf@clodo.ru
 # Git repo: https://github.com/Cepnoy/clodo-perl-vps-check
 
-
-
 use strict;
 use Nagios::Plugin::Getopt;
 use Nagios::Plugin::Threshold;
@@ -171,19 +169,14 @@ sub auth {
 				
 	} else {
 		
-		if ($options->verbose) {
-			print "else\n";
-			print "X-token = $xtoken\n";
-			print "Cmd url = $cmdurl" . "$url\n";
-		}
-
+		print "else\nX-token = $xtoken\nCmd url = $cmdurl" . "$url\n" if $options->verbose;
+		
 		my $ua = LWP::UserAgent->new;
 		my $request = HTTP::Request->new('GET', $cmdurl . $url,
 									[	'X-Auth-Token' => $xtoken,
 										'Accept' => "application/json"
 									 ]
 		);
-		
 		$response = $ua->request($request);		
 	}
 }
@@ -197,11 +190,8 @@ sub auth_api {
 		$xtoken = $response->header('X-Auth-Token');
 		$cmdurl = $response->header('X-Server-Management-Url');
 		
-		if ($options->verbose) {			
-			print $response->as_string;
-			print "X-token = $xtoken\n";
-			print "Cmd url = $cmdurl\n";
-		}
+		(print $response->as_string) && (print "\nX-token = $xtoken\nCmd url = $cmdurl\n\n") if $options->verbose;
+		
 	} else {
 		die $response->status_line;
 	}
@@ -209,17 +199,16 @@ sub auth_api {
 }
 
 sub get_servers {
+	
 	my $p;
+	
 	auth("/servers");
 		
 	if ($response->is_success(204)) {
 
 		 $res = $response->content;
 
-		if ($options->verbose) {
-			print "/servers response content\n";
-			print "$res\n";
-		}
+		(print "\n/servers response content\n") && (print "\n$res\n\n") if $options->verbose;
 		
 		$json_any = JSON::Any->new;
 		$json_res = $json_any->from_json($res);
@@ -233,8 +222,8 @@ sub get_servers {
 		
 			if ($vps_ip eq $content{adddresses}) {
 				if ($options->verbose) {			
-					print "Вот он!! Вот он адрес моей мечты!\n";
-					print "full_id - $content{full_id} id - $content{id} ip - $content{adddresses} status - $content{status}\n";
+					print "\nВот он!! Вот он адрес моей мечты!\n";
+					print "\nfull_id - $content{full_id}\nid - $content{id}\nip - $content{adddresses}\nstatus - $content{status}\n\n";
 				}
 				last
 			}
@@ -275,38 +264,33 @@ sub get_servers {
 	if ($response->is_success(204)) {
 		$res = $response->content;
 
-		if ($options->verbose) {
-			print "/servers/$content{id} response content\n";
-			print "$res\n";
-		}
-	
+		(print "/servers/$content{id} response content\n") && (print "$res\n") if $options->verbose;
+
 		$json_any = JSON::Any->new;
 		$json_res = $json_any->from_json($res);
 		
 		$cpu_stat = $json_res->{server}->{vps_cpu_load};
 		$mem_stat = $json_res->{server}->{vps_mem_load};
 		$hdd_stat = $json_res->{server}->{vps_disk_load};
+
+		print "CPU STAT - $cpu_stat%\nMEM STAT - $mem_stat%\nHDD STAT - $hdd_stat%\n" if $options->verbose;
 		
-		if ($options->verbose) {
-			print "CPU STAT - $cpu_stat%\n";
-			print "MEM STAT - $mem_stat%\n";
-			print "HDD STAT - $hdd_stat%\n";
-		}
 	} else {
 			$np->nagios_exit(CRITICAL, "Could not connect to /servers/$content{id} api");
 	}
 	
 }	
 
-
-
-
 sub check_cpu_load {
+	
 		$cpu_stat = int($cpu_stat);
+		
 		if (defined $options->mcu && defined $options->wmcu) {
 				my $mcu = $options->mcu;
 				my $wmcu = $options->wmcu;
+				
 				die ("Critical value cannot be less max value\n") if ($mcu < $wmcu);										
+				
 				if ($cpu_stat >= $wmcu && $cpu_stat < $mcu) {
 					$np->add_message(WARNING, "Warning cpu value - $cpu_stat");
 				} elsif ($cpu_stat >= $mcu) {
@@ -328,6 +312,7 @@ sub check_mem_load {
 			
 			my $mm = $options->mm;
 			my $wmm = $options->wmm;
+			
 			die ("Critical value cannot be less max value\n") if ($mm < $wmm);
 			
 			if ($mem_stat >= $wmm && $mem_stat < $mm) {
@@ -378,7 +363,7 @@ sub check_balance {
 		my $balance_stat = $json_res->{user}->{users_balance};
 		if ($options->verbose) {
 			print $response->as_string;
-			print "Account balance - $balance_stat" . " rur" . "\n";
+			print "Account balance - $balance_stat" . " RUR" . "\n";
 		}
 		
 		if ($balance_stat < 0) {
@@ -392,18 +377,11 @@ sub check_balance {
 }
 
 auth_api();
-
 get_servers();
-
 check_mem_load();
-
 check_cpu_load();
-
 check_disk_load();
-
-if ($options->checkbalance) {
-	check_balance();
-}
+check_balance() if $options->checkbalance;
 
 my ($code, $message) = $np->check_messages(join => '; ', join_all => '; ');
 
@@ -411,4 +389,3 @@ $np->nagios_exit(
 				message => $message,
 				return_code => $code,
 );
-
