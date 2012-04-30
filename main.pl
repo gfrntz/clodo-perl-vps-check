@@ -36,7 +36,6 @@ use vars qw(
 	$cpu_stat
 	$mem_stat
 	$hdd_stat
-
 );
 
 $version = "v2.0 stable";
