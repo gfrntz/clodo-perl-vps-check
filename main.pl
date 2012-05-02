@@ -264,64 +264,64 @@ sub get_servers {
 
 sub check_cpu_load {
 	
-		$cpu_stat = int($cpu_stat);
+	$cpu_stat = int($cpu_stat);
 		
-		if (defined $options->mcu && defined $options->wmcu) {
-				my $mcu = $options->mcu;
-				my $wmcu = $options->wmcu;
+	if (defined $options->mcu && defined $options->wmcu) {
+			my $mcu = $options->mcu;
+			my $wmcu = $options->wmcu;
 				
-				die ("Critical value cannot be less max value\n") if ($mcu < $wmcu);										
+			die ("Critical value cannot be less max value\n") if ($mcu < $wmcu);										
 				
-				if ($cpu_stat >= $wmcu && $cpu_stat < $mcu) { $np->add_message(WARNING, "Warning cpu value - $cpu_stat %");
+			if ($cpu_stat >= $wmcu && $cpu_stat < $mcu) { $np->add_message(WARNING, "Warning cpu value - $cpu_stat %");
 				
-				} elsif ($cpu_stat >= $mcu) { $np->add_message(CRITICAL, "CPU Critical - $cpu_stat %"); }
+			} elsif ($cpu_stat >= $mcu) { $np->add_message(CRITICAL, "CPU Critical - $cpu_stat %"); }
 				
-		} else {
-			if ($cpu_stat >= 10 && $cpu_stat < 20) { $np->add_message(WARNING, "Warning cpu value - $cpu_stat %");
+	} else {
+		if ($cpu_stat >= 10 && $cpu_stat < 20) { $np->add_message(WARNING, "Warning cpu value - $cpu_stat %");
 			
-			} elsif ($cpu_stat >= 20) { $np->add_message(CRITICAL, "CPU Critical - $cpu_stat %"); }
-		}
+		} elsif ($cpu_stat >= 20) { $np->add_message(CRITICAL, "CPU Critical - $cpu_stat %"); }
+	}
 }
 
 sub check_mem_load {
-		$mem_stat = int($mem_stat);
+	$mem_stat = int($mem_stat);
 		
-		if ($options->mm && $options->wmm) {
+	if ($options->mm && $options->wmm) {
 			
-			my $mm = $options->mm;
-			my $wmm = $options->wmm;
+		my $mm = $options->mm;
+		my $wmm = $options->wmm;
 			
-			die ("Critical value cannot be less max value\n") if ($mm < $wmm);
+		die ("Critical value cannot be less max value\n") if ($mm < $wmm);
 			
-			if ($mem_stat >= $wmm && $mem_stat < $mm) { $np->add_message(WARNING, "Memory load warning - $mem_stat %\n");
+		if ($mem_stat >= $wmm && $mem_stat < $mm) { $np->add_message(WARNING, "Memory load warning - $mem_stat %\n");
 			
-			} elsif ($mem_stat >= $mm) { $np->add_message(CRITICAL, "Memory load critical - $mem_stat %\n"); }
+		} elsif ($mem_stat >= $mm) { $np->add_message(CRITICAL, "Memory load critical - $mem_stat %\n"); }
 			
-		} else {
-			if ($mem_stat >= 60 && $mem_stat < 98) { $np->add_message(WARNING, "Memory load warning - $mem_stat %\n");
+	} else {
+		if ($mem_stat >= 60 && $mem_stat < 98) { $np->add_message(WARNING, "Memory load warning - $mem_stat %\n");
 			
-			} elsif ($mem_stat >= 98) { $np->add_message(CRITICAL, "Memory load critical - $mem_stat %\n"); }
-		}
+		} elsif ($mem_stat >= 98) { $np->add_message(CRITICAL, "Memory load critical - $mem_stat %\n"); }
+	}
 }
 
 
 sub check_disk_load {
 		
-		if ($options->mhu && $options->wmhu) {
-			my $mhu = $options->mhu;
-			my $wmhu = $options->wmhu;
+	if ($options->mhu && $options->wmhu) {
+		my $mhu = $options->mhu;
+		my $wmhu = $options->wmhu;
 			
-			die ("Critical value cannot be less max value\n") if ($mhu < $wmhu);
+		die ("Critical value cannot be less max value\n") if ($mhu < $wmhu);
 			
-			if ($hdd_stat >= $wmhu && $hdd_stat < $mhu) { $np->add_message(WARNING, "Hdd usage warning - $hdd_stat %\n");
+		if ($hdd_stat >= $wmhu && $hdd_stat < $mhu) { $np->add_message(WARNING, "Hdd usage warning - $hdd_stat %\n");
 			
-			} elsif ($hdd_stat >= $mhu) { $np->add_message(CRITICAL, "Hdd usage critical - $hdd_stat %\n"); }
+		} elsif ($hdd_stat >= $mhu) { $np->add_message(CRITICAL, "Hdd usage critical - $hdd_stat %\n"); }
 			
-		} else {
-			if ($hdd_stat >= 80 && $hdd_stat < 98) { $np->add_message(WARNING, "Memory load - $hdd_stat %\n"); 
+	} else {
+		if ($hdd_stat >= 80 && $hdd_stat < 98) { $np->add_message(WARNING, "Memory load - $hdd_stat %\n"); 
 			
-			} elsif ($hdd_stat >= 99) { $np->add_message(CRITICAL, "Hdd usage critical - $hdd_stat %\n"); }
-		}		
+		} elsif ($hdd_stat >= 99) { $np->add_message(CRITICAL, "Hdd usage critical - $hdd_stat %\n"); }
+	}		
 }
 
 sub check_balance {
@@ -333,15 +333,11 @@ sub check_balance {
 		my $json_any = JSON::Any->new;
 		my $json_res = $json_any->from_json($res);
 		my $balance_stat = $json_res->{user}->{users_balance};
-		if ($options->verbose) {
-			print $response->as_string;
-			print "Account balance - $balance_stat" . " RUR" . "\n";
-		}
 		
-		if ($balance_stat < 0) { $np->add_message(CRITICAL, "Negative account balance.\n"); }
-		
-	} else { $np->add_message(CRITICAL, "Could not connect to api url /user/ for balance_check"); }
-	
+		(print $response->as_string) && (print "Account balance - $balance_stat" . " RUR" . "\n") if ($options->verbose);
+
+		$np->add_message(CRITICAL, "Negative account balance.\n") if ($balance_stat < 0);
+	} else { $np->add_message(CRITICAL, "Could not connect to /users/ api url."); }
 }
 
 auth_api();
