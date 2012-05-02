@@ -222,13 +222,9 @@ sub get_servers {
 		if ($content{status} eq "is_disabled") { $np->nagios_exit(OK, "Nothing to do, because vps is disabled."); }
 		
 		$p = Net::Ping->new("icmp",5);
-		if ($p->ping($vps_ip) == 1 && $content{status} eq "is_disabled") {
-			$np->nagios_exit(CRITICAL,"VPS  disabled in panel, but started.");
-			$p->close();
-		} elsif ($p->ping($vps_ip) == 0 && $content{status} eq "is_running") {
-			$np->add_message(CRITICAL, "VPS running, but ping not ok.");
-			$p->close();
-		}
+		if ($p->ping($vps_ip) == 1 && $content{status} eq "is_disabled") { $np->nagios_exit(CRITICAL,"VPS  disabled in panel, but started.") && $p->close(); }
+		
+		elsif ($p->ping($vps_ip) == 0 && $content{status} eq "is_running") { $np->add_message(CRITICAL, "VPS running, but ping not ok.") && $p->close(); }
 		
 		my $ip_http = "http://" . $vps_ip;
 
@@ -271,15 +267,15 @@ sub check_cpu_load {
 			my $wmcu = $options->wmcu;
 				
 			die ("Critical value cannot be less max value\n") if ($mcu < $wmcu);										
-				
-			if ($cpu_stat >= $wmcu && $cpu_stat < $mcu) { $np->add_message(WARNING, "Warning cpu value - $cpu_stat %");
-				
-			} elsif ($cpu_stat >= $mcu) { $np->add_message(CRITICAL, "CPU Critical - $cpu_stat %"); }
-				
+		   
+		     $cpu_stat = 
+			($cpu_stat >= $wmcu && $cpu_stat < $mcu) ? $np->add_message(WARNING, "Warning cpu value - $cpu_stat %") :
+			($cpu_stat >= $mcu) 				     ? $np->add_message(CRITICAL, "CPU Critical - $cpu_stat %") : return 0;
+
 	} else {
-		if ($cpu_stat >= 10 && $cpu_stat < 20) { $np->add_message(WARNING, "Warning cpu value - $cpu_stat %");
-			
-		} elsif ($cpu_stat >= 20) { $np->add_message(CRITICAL, "CPU Critical - $cpu_stat %"); }
+			 $cpu_stat =
+			($cpu_stat >= 10 && $cpu_stat < 20) ? $np->add_message(WARNING, "Warning cpu value - $cpu_stat %") :
+			($cpu_stat >= 20)					? $np->add_message(CRITICAL, "CPU Critical - $cpu_stat %") : return 0;
 	}
 }
 
@@ -292,15 +288,15 @@ sub check_mem_load {
 		my $wmm = $options->wmm;
 			
 		die ("Critical value cannot be less max value\n") if ($mm < $wmm);
-			
-		if ($mem_stat >= $wmm && $mem_stat < $mm) { $np->add_message(WARNING, "Memory load warning - $mem_stat %\n");
-			
-		} elsif ($mem_stat >= $mm) { $np->add_message(CRITICAL, "Memory load critical - $mem_stat %\n"); }
+		
+		 $mem_stat =
+		($mem_stat >= $wmm && $mem_stat < $mm) ? $np->add_message(WARNING, "Memory load warning - $mem_stat %\n") :
+		($mem_stat >= $mm) 					   ? $np->add_message(CRITICAL, "Memory load critical - $mem_stat %\n") : return 0;
 			
 	} else {
-		if ($mem_stat >= 60 && $mem_stat < 98) { $np->add_message(WARNING, "Memory load warning - $mem_stat %\n");
-			
-		} elsif ($mem_stat >= 98) { $np->add_message(CRITICAL, "Memory load critical - $mem_stat %\n"); }
+		 $mem_stat = 
+		($mem_stat >= 60 && $mem_stat < 98) ? $np->add_message(WARNING, "Memory load warning - $mem_stat %\n") :
+		($mem_stat >= 98) 				    ? $np->add_message(CRITICAL, "Memory load critical - $mem_stat %\n") : return 0;
 	}
 }
 
@@ -312,16 +308,17 @@ sub check_disk_load {
 		my $wmhu = $options->wmhu;
 			
 		die ("Critical value cannot be less max value\n") if ($mhu < $wmhu);
-			
-		if ($hdd_stat >= $wmhu && $hdd_stat < $mhu) { $np->add_message(WARNING, "Hdd usage warning - $hdd_stat %\n");
-			
-		} elsif ($hdd_stat >= $mhu) { $np->add_message(CRITICAL, "Hdd usage critical - $hdd_stat %\n"); }
-			
+		
+		 $hdd_stat = 
+		($hdd_stat >= $wmhu && $hdd_stat < $mhu) ? $np->add_message(WARNING, "Hdd usage warning - $hdd_stat %\n") :
+		($hdd_stat >= $mhu)						 ? $np->add_message(CRITICAL, "Hdd usage critical - $hdd_stat %\n") : return 0;	
+		
 	} else {
-		if ($hdd_stat >= 80 && $hdd_stat < 98) { $np->add_message(WARNING, "Memory load - $hdd_stat %\n"); 
-			
-		} elsif ($hdd_stat >= 99) { $np->add_message(CRITICAL, "Hdd usage critical - $hdd_stat %\n"); }
-	}		
+		
+		 $hdd_stat =
+		($hdd_stat >= 80 && $hdd_stat < 98) ? $np->add_message(WARNING, "Memory load - $hdd_stat %\n") :
+		($hdd_stat >= 99)					? $np->add_message(CRITICAL, "Hdd usage critical - $hdd_stat %\n") : return 0;
+	}
 }
 
 sub check_balance {
@@ -337,6 +334,7 @@ sub check_balance {
 		(print $response->as_string) && (print "Account balance - $balance_stat" . " RUR" . "\n") if ($options->verbose);
 
 		$np->add_message(CRITICAL, "Negative account balance.\n") if ($balance_stat < 0);
+		
 	} else { $np->add_message(CRITICAL, "Could not connect to /users/ api url."); }
 }
 
