@@ -187,9 +187,7 @@ sub auth_api {
 		
 		(print $response->as_string) && (print "\nX-token = $xtoken\nCmd url = $cmdurl\n\n") if $options->verbose;	
 		
-	} else {
-		$np->nagios_exit(CRITICAL, "Could not auth to clodo api. Exiting.");
-	}
+	} else { $np->nagios_exit(CRITICAL, "Could not auth to clodo api. Exiting."); }
 }
 
 sub get_servers {
@@ -215,17 +213,13 @@ sub get_servers {
 			$content{status} = $hash -> {status};
 		
 			if ($vps_ip eq $content{adddresses}) {
-				if ($options->verbose) {			
-					print "\nfull_id - $content{full_id}\nid - $content{id}\nip - $content{adddresses}\nstatus - $content{status}\n\n";
-				}
+				if ($options->verbose) { print "\nfull_id - $content{full_id}\nid - $content{id}\nip - $content{adddresses}\nstatus - $content{status}\n\n"; }
 				last
 			}
 			$hash++;
 		}
 		
-		if ($content{status} eq "is_disabled") {
-			$np->nagios_exit(OK, "Nothing to do, because vps is disabled.");
-		}
+		if ($content{status} eq "is_disabled") { $np->nagios_exit(OK, "Nothing to do, because vps is disabled."); }
 		
 		$p = Net::Ping->new("icmp",5);
 		if ($p->ping($vps_ip) == 1 && $content{status} eq "is_disabled") {
@@ -243,14 +237,10 @@ sub get_servers {
 			my $get_ok = HTTP::Request->new('GET', $ip_http);
 			my $get_ok_response = $ua->request($get_ok);
 		
-			if ($get_ok_response->code != 200) {
-				$np->add_message(WARNING, "VPS enabled, ping ok, but http not 200.");
-			}
+			if ($get_ok_response->code != 200) { $np->add_message(WARNING, "VPS enabled, ping ok, but http not 200."); }
 		}
 		
-	} else {
-			$np->nagios_exit(CRITICAL, "Could not connect to api");
-	}
+	} else { $np->nagios_exit(CRITICAL, "Could not connect to api"); }
 	
 	auth("/servers/$content{id}");
 	
@@ -268,9 +258,7 @@ sub get_servers {
 
 		print "CPU STAT - $cpu_stat%\nMEM STAT - $mem_stat%\nHDD STAT - $hdd_stat%\n" if $options->verbose;
 		
-	} else {
-			$np->nagios_exit(CRITICAL, "Could not connect to /servers/$content{id} api");
-	}
+	} else { $np->nagios_exit(CRITICAL, "Could not connect to /servers/$content{id} api"); }
 	
 }	
 
@@ -284,17 +272,14 @@ sub check_cpu_load {
 				
 				die ("Critical value cannot be less max value\n") if ($mcu < $wmcu);										
 				
-				if ($cpu_stat >= $wmcu && $cpu_stat < $mcu) {
-					$np->add_message(WARNING, "Warning cpu value - $cpu_stat %");
-				} elsif ($cpu_stat >= $mcu) {
-					$np->add_message(CRITICAL, "CPU Critical - $cpu_stat %");
-				}
+				if ($cpu_stat >= $wmcu && $cpu_stat < $mcu) { $np->add_message(WARNING, "Warning cpu value - $cpu_stat %");
+				
+				} elsif ($cpu_stat >= $mcu) { $np->add_message(CRITICAL, "CPU Critical - $cpu_stat %"); }
+				
 		} else {
-			if ($cpu_stat >= 10 && $cpu_stat < 20) {
-				$np->add_message(WARNING, "Warning cpu value - $cpu_stat %");
-			} elsif ($cpu_stat >= 20) {
-				$np->add_message(CRITICAL, "CPU Critical - $cpu_stat %");
-			}
+			if ($cpu_stat >= 10 && $cpu_stat < 20) { $np->add_message(WARNING, "Warning cpu value - $cpu_stat %");
+			
+			} elsif ($cpu_stat >= 20) { $np->add_message(CRITICAL, "CPU Critical - $cpu_stat %"); }
 		}
 }
 
@@ -308,18 +293,15 @@ sub check_mem_load {
 			
 			die ("Critical value cannot be less max value\n") if ($mm < $wmm);
 			
-			if ($mem_stat >= $wmm && $mem_stat < $mm) {
-				$np->add_message(WARNING, "Memory load warning - $mem_stat %\n");
-			} elsif ($mem_stat >= $mm) {
-				$np->add_message(CRITICAL, "Memory load critical - $mem_stat %\n");
-			}
+			if ($mem_stat >= $wmm && $mem_stat < $mm) { $np->add_message(WARNING, "Memory load warning - $mem_stat %\n");
+			
+			} elsif ($mem_stat >= $mm) { $np->add_message(CRITICAL, "Memory load critical - $mem_stat %\n"); }
+			
 		} else {
-			if ($mem_stat >= 60 && $mem_stat < 98) {
-				$np->add_message(WARNING, "Memory load warning - $mem_stat %\n");
-			} elsif ($mem_stat >= 98) {
-				$np->add_message(CRITICAL, "Memory load critical - $mem_stat %\n");
-			}
-		}	
+			if ($mem_stat >= 60 && $mem_stat < 98) { $np->add_message(WARNING, "Memory load warning - $mem_stat %\n");
+			
+			} elsif ($mem_stat >= 98) { $np->add_message(CRITICAL, "Memory load critical - $mem_stat %\n"); }
+		}
 }
 
 
@@ -331,17 +313,14 @@ sub check_disk_load {
 			
 			die ("Critical value cannot be less max value\n") if ($mhu < $wmhu);
 			
-			if ($hdd_stat >= $wmhu && $hdd_stat < $mhu) {
-				$np->add_message(WARNING, "Hdd usage warning - $hdd_stat %\n");
-			} elsif ($hdd_stat >= $mhu) {
-				$np->add_message(CRITICAL, "Hdd usage critical - $hdd_stat %\n");
-			}
+			if ($hdd_stat >= $wmhu && $hdd_stat < $mhu) { $np->add_message(WARNING, "Hdd usage warning - $hdd_stat %\n");
+			
+			} elsif ($hdd_stat >= $mhu) { $np->add_message(CRITICAL, "Hdd usage critical - $hdd_stat %\n"); }
+			
 		} else {
-			if ($hdd_stat >= 80 && $hdd_stat < 98) {
-				$np->add_message(WARNING, "Memory load - $hdd_stat %\n");
-			} elsif ($hdd_stat >= 99) {
-				$np->add_message(CRITICAL, "Hdd usage critical - $hdd_stat %\n");
-			}
+			if ($hdd_stat >= 80 && $hdd_stat < 98) { $np->add_message(WARNING, "Memory load - $hdd_stat %\n"); 
+			
+			} elsif ($hdd_stat >= 99) { $np->add_message(CRITICAL, "Hdd usage critical - $hdd_stat %\n"); }
 		}		
 }
 
@@ -359,13 +338,9 @@ sub check_balance {
 			print "Account balance - $balance_stat" . " RUR" . "\n";
 		}
 		
-		if ($balance_stat < 0) {
-			$np->add_message(CRITICAL, "Negative account balance.\n");
-		}
+		if ($balance_stat < 0) { $np->add_message(CRITICAL, "Negative account balance.\n"); }
 		
-	} else {
-		$np->add_message(CRITICAL, "Could not connect to api url /user/ for balance_check");
-	}
+	} else { $np->add_message(CRITICAL, "Could not connect to api url /user/ for balance_check"); }
 	
 }
 
