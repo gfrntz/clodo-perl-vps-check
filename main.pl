@@ -185,7 +185,7 @@ sub auth_api {
 		$xtoken = $response->header('X-Auth-Token');
 		$cmdurl = $response->header('X-Server-Management-Url');
 		
-		(print $response->as_string) && (print "\nX-token = $xtoken\nCmd url = $cmdurl\n\n") if $options->verbose;
+		(print $response->as_string) && (print "\nX-token = $xtoken\nCmd url = $cmdurl\n\n") if $options->verbose;	
 		
 	} else {
 		$np->nagios_exit(CRITICAL, "Could not auth to clodo api. Exiting.");
